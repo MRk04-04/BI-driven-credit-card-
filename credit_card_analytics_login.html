@@ -1,0 +1,1118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BI-Driven Credit Card Transaction Analytics</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600;700;800&family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+/* ══════════ THEME VARIABLES PER TAB ══════════ */
+:root {
+  --bg: #080c18;
+  --bg2: #0d1120;
+  --card: #111827;
+  --card2: #162035;
+  --border: rgba(255,255,255,0.08);
+  --text: #e8edf5;
+  --muted: #6b7a99;
+  --muted2: #3d4a63;
+  /* TAB THEMES — switched by JS */
+  --primary: #4f9eff;
+  --primary-glow: rgba(79,158,255,0.18);
+  --primary-dark: rgba(79,158,255,0.08);
+  --secondary: #7dd3fc;
+  --accent-a: #38bdf8;
+  --accent-b: #818cf8;
+  --accent-c: #34d399;
+  --accent-d: #fb923c;
+  --tab-name: "Overview";
+}
+body[data-tab="overview"] {
+  --primary:#4f9eff; --primary-glow:rgba(79,158,255,0.2); --primary-dark:rgba(79,158,255,0.07);
+  --secondary:#7dd3fc; --accent-a:#38bdf8; --accent-b:#818cf8; --accent-c:#34d399; --accent-d:#fb923c;
+}
+body[data-tab="transactions"] {
+  --primary:#f59e0b; --primary-glow:rgba(245,158,11,0.2); --primary-dark:rgba(245,158,11,0.07);
+  --secondary:#fbbf24; --accent-a:#f59e0b; --accent-b:#fb923c; --accent-c:#fcd34d; --accent-d:#d97706;
+}
+body[data-tab="fraud"] {
+  --primary:#f87171; --primary-glow:rgba(248,113,113,0.2); --primary-dark:rgba(248,113,113,0.07);
+  --secondary:#fca5a5; --accent-a:#f87171; --accent-b:#fb923c; --accent-c:#a78bfa; --accent-d:#e53e3e;
+}
+body[data-tab="customers"] {
+  --primary:#a78bfa; --primary-glow:rgba(167,139,250,0.2); --primary-dark:rgba(167,139,250,0.07);
+  --secondary:#c4b5fd; --accent-a:#a78bfa; --accent-b:#818cf8; --accent-c:#38bdf8; --accent-d:#34d399;
+}
+body[data-tab="tech"] {
+  --primary:#34d399; --primary-glow:rgba(52,211,153,0.2); --primary-dark:rgba(52,211,153,0.07);
+  --secondary:#6ee7b7; --accent-a:#34d399; --accent-b:#38bdf8; --accent-c:#a78bfa; --accent-d:#fbbf24;
+}
+
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Outfit',sans-serif;font-size:14px;line-height:1.6;min-height:100vh;transition:--primary 0.4s;}
+
+/* ══════════ LAYOUT ══════════ */
+.shell{display:flex;flex-direction:column;min-height:100vh;}
+
+/* TOP NAV */
+.topnav{
+  position:sticky;top:0;z-index:200;
+  background:rgba(8,12,24,0.92);backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--border);
+  padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;height:56px;
+}
+.nav-logo{font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:2px;color:var(--primary);transition:color 0.4s;}
+.nav-logo span{color:var(--text);opacity:0.5;font-size:0.9rem;letter-spacing:0;font-family:'Outfit',sans-serif;margin-left:8px;}
+.nav-tag{font-family:'DM Mono',monospace;font-size:0.68rem;color:var(--muted);background:var(--primary-dark);border:1px solid var(--primary-glow);padding:0.2rem 0.7rem;border-radius:4px;transition:all 0.4s;}
+
+/* MAIN BODY SPLIT */
+.body-wrap{display:flex;flex:1;}
+
+/* SIDEBAR NAV */
+.sidenav{
+  width:200px;flex-shrink:0;
+  background:var(--bg2);border-right:1px solid var(--border);
+  padding:1.5rem 0;position:sticky;top:56px;height:calc(100vh - 56px);overflow-y:auto;
+  display:flex;flex-direction:column;gap:0.2rem;
+}
+.sidenav-item{
+  display:flex;align-items:center;gap:0.8rem;
+  padding:0.6rem 1.4rem;cursor:pointer;
+  font-size:0.85rem;font-weight:500;color:var(--muted);
+  border-left:3px solid transparent;
+  transition:all 0.2s;user-select:none;
+}
+.sidenav-item:hover{color:var(--text);background:rgba(255,255,255,0.03);}
+.sidenav-item.active{color:var(--primary);border-left-color:var(--primary);background:var(--primary-dark);font-weight:600;transition:all 0.3s;}
+.sidenav-icon{width:18px;height:18px;opacity:0.7;flex-shrink:0;}
+.sidenav-sep{height:1px;background:var(--border);margin:0.8rem 1rem;}
+.sidenav-label{font-size:0.65rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted2);padding:0 1.4rem 0.4rem;}
+
+/* CONTENT AREA */
+.content-area{flex:1;min-width:0;display:flex;gap:0;}
+
+/* LEFT SUMMARY PANEL */
+.summary-panel{
+  width:260px;flex-shrink:0;
+  background:var(--bg2);border-right:1px solid var(--border);
+  padding:1.2rem;display:flex;flex-direction:column;gap:0.8rem;
+  position:sticky;top:56px;height:calc(100vh - 56px);overflow-y:auto;
+  transition:all 0.35s;
+}
+.summary-panel.collapsed{width:0;padding:0;overflow:hidden;border:none;}
+.sp-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:0.3rem;}
+.sp-title{font-size:0.65rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--primary);transition:color 0.4s;}
+.sp-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;padding:0;line-height:1;transition:color 0.2s;}
+.sp-close:hover{color:var(--text);}
+.sp-selected-label{font-size:0.7rem;color:var(--muted);margin-bottom:0.2rem;}
+.sp-selected-value{font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--primary);line-height:1.1;transition:color 0.4s;}
+.sp-selected-sub{font-size:0.75rem;color:var(--muted);margin-top:0.2rem;}
+.sp-divider{height:1px;background:var(--border);margin:0.4rem 0;}
+.sp-section{font-size:0.65rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted2);margin-bottom:0.5rem;}
+.sp-stat{display:flex;justify-content:space-between;align-items:baseline;padding:0.35rem 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.8rem;}
+.sp-stat:last-child{border:none;}
+.sp-stat-label{color:var(--muted);}
+.sp-stat-val{font-weight:600;color:var(--text);font-family:'DM Mono',monospace;font-size:0.78rem;}
+.sp-insight{background:var(--primary-dark);border:1px solid var(--primary-glow);border-radius:8px;padding:0.75rem;font-size:0.78rem;color:var(--text);line-height:1.5;transition:all 0.4s;}
+.sp-insight strong{color:var(--primary);transition:color 0.4s;}
+.sp-badge{display:inline-block;font-size:0.65rem;font-weight:700;padding:0.2rem 0.6rem;border-radius:100px;margin-top:0.5rem;}
+.sp-badge-up{background:rgba(52,211,153,0.15);color:#34d399;}
+.sp-badge-warn{background:rgba(248,113,113,0.15);color:#f87171;}
+.sp-badge-info{background:var(--primary-dark);color:var(--primary);border:1px solid var(--primary-glow);}
+.sp-mini-bar{display:flex;align-items:center;gap:0.5rem;margin:0.25rem 0;font-size:0.75rem;}
+.sp-bar-track{flex:1;background:rgba(255,255,255,0.06);border-radius:100px;height:5px;}
+.sp-bar-fill{height:5px;border-radius:100px;background:var(--primary);transition:background 0.4s;}
+.sp-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:0.5rem;color:var(--muted);text-align:center;padding:2rem 0.5rem;}
+.sp-empty-icon{font-size:2rem;opacity:0.3;}
+.sp-empty-text{font-size:0.8rem;line-height:1.5;opacity:0.6;}
+
+/* MAIN SCROLL AREA */
+.main-scroll{flex:1;min-width:0;padding:2rem 1.8rem;overflow-y:auto;}
+
+/* SECTION HEADER */
+.sec-header{margin-bottom:1.8rem;}
+.sec-tag{display:inline-flex;align-items:center;gap:0.4rem;background:var(--primary-dark);border:1px solid var(--primary-glow);color:var(--primary);font-size:0.65rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:0.25rem 0.75rem;border-radius:4px;margin-bottom:0.7rem;transition:all 0.4s;}
+.sec-title{font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:1px;color:var(--text);line-height:1;}
+.sec-sub{color:var(--muted);font-size:0.85rem;margin-top:0.3rem;}
+
+/* PANELS HIDDEN */
+.tab-panel{display:none;}
+.tab-panel.active{display:block;animation:fadeIn 0.3s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+
+/* KPI GRID */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:0.9rem;margin-bottom:1.8rem;}
+.kpi-card{
+  background:var(--card);border:1px solid var(--border);border-radius:12px;
+  padding:1.1rem 1.2rem;position:relative;overflow:hidden;cursor:pointer;
+  transition:border-color 0.2s,box-shadow 0.2s,transform 0.15s;
+}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--kpi-color,var(--primary));border-radius:12px 12px 0 0;transition:height 0.2s;}
+.kpi-card:hover{border-color:var(--kpi-color,var(--primary));box-shadow:0 0 20px rgba(0,0,0,0.3);transform:translateY(-2px);}
+.kpi-card.selected{border-color:var(--kpi-color,var(--primary));box-shadow:0 0 0 2px var(--kpi-color,var(--primary)),0 8px 24px rgba(0,0,0,0.4);}
+.kpi-card.selected::before{height:3px;}
+.kpi-label{font-size:0.68rem;font-weight:600;letter-spacing:0.8px;text-transform:uppercase;color:var(--muted);margin-bottom:0.5rem;}
+.kpi-value{font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--text);line-height:1;letter-spacing:1px;}
+.kpi-sub{font-size:0.72rem;color:var(--muted);margin-top:0.3rem;}
+.kpi-badge{display:inline-block;font-size:0.65rem;font-weight:600;padding:0.15rem 0.5rem;border-radius:100px;margin-top:0.4rem;}
+.badge-up{background:rgba(52,211,153,0.15);color:#34d399;}
+.badge-warn{background:rgba(248,113,113,0.15);color:#f87171;}
+.badge-info{background:var(--primary-dark);color:var(--primary);}
+
+/* CHART CARDS */
+.chart-row{display:grid;gap:1rem;margin-bottom:1rem;}
+.chart-row-2{grid-template-columns:1fr 1fr;}
+.chart-row-3{grid-template-columns:1fr 1fr 1fr;}
+.chart-row-1{grid-template-columns:1fr;}
+@media(max-width:900px){.chart-row-2,.chart-row-3{grid-template-columns:1fr;}}
+.chart-card{
+  background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.2rem;
+  cursor:pointer;transition:border-color 0.2s,box-shadow 0.2s;
+}
+.chart-card:hover{border-color:rgba(255,255,255,0.15);box-shadow:0 4px 20px rgba(0,0,0,0.25);}
+.chart-card.selected{border-color:var(--primary);box-shadow:0 0 0 1px var(--primary-glow);}
+.chart-card .ct{font-size:0.72rem;font-weight:700;letter-spacing:0.6px;text-transform:uppercase;color:var(--muted);}
+.chart-card .cs{font-size:0.72rem;color:var(--muted2);margin-bottom:1rem;}
+.chart-card .ccanv{position:relative;height:200px;}
+.chart-card .ccanv-tall{position:relative;height:250px;}
+
+/* TABLE */
+.data-table{width:100%;border-collapse:collapse;font-size:0.82rem;}
+.data-table th{text-align:left;font-size:0.65rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);padding:0.55rem 0.9rem;border-bottom:1px solid var(--border);}
+.data-table td{padding:0.65rem 0.9rem;border-bottom:1px solid rgba(255,255,255,0.04);color:var(--text);cursor:pointer;}
+.data-table tr:hover td{background:rgba(255,255,255,0.025);}
+.data-table tr.selected td{background:var(--primary-dark);}
+.pill{display:inline-block;font-size:0.65rem;font-weight:600;padding:0.15rem 0.55rem;border-radius:100px;}
+.pill-blue{background:rgba(79,158,255,0.15);color:#4f9eff;}
+.pill-green{background:rgba(52,211,153,0.15);color:#34d399;}
+.pill-red{background:rgba(248,113,113,0.15);color:#f87171;}
+.pill-amber{background:rgba(251,191,36,0.15);color:#fbbf24;}
+.pill-purple{background:rgba(167,139,250,0.15);color:#a78bfa;}
+
+/* RISK / FRAUD BARS */
+.risk-bar{display:flex;height:12px;border-radius:100px;overflow:hidden;gap:2px;margin:1rem 0 0.5rem;}
+.risk-bar div{border-radius:100px;cursor:pointer;transition:opacity 0.2s,filter 0.2s;}
+.risk-bar div:hover{filter:brightness(1.3);}
+.risk-labels{display:flex;justify-content:space-between;font-size:0.68rem;color:var(--muted);}
+.fraud-rate-big{font-family:'Bebas Neue',sans-serif;font-size:3.5rem;color:#f87171;line-height:1;}
+
+/* STATE BARS */
+.state-bar-row{display:flex;align-items:center;gap:0.7rem;margin-bottom:0.45rem;font-size:0.78rem;cursor:pointer;padding:0.2rem 0.4rem;border-radius:6px;transition:background 0.15s;}
+.state-bar-row:hover{background:rgba(255,255,255,0.04);}
+.state-bar-row.selected{background:var(--primary-dark);}
+.state-name{width:100px;color:var(--muted);flex-shrink:0;}
+.state-bar-wrap{flex:1;background:rgba(255,255,255,0.06);border-radius:100px;height:7px;}
+.state-bar-fill{height:7px;border-radius:100px;background:var(--primary);transition:background 0.4s;}
+.state-count{width:28px;text-align:right;color:var(--text);font-weight:600;flex-shrink:0;font-family:'DM Mono',monospace;font-size:0.75rem;}
+
+/* FRAUD TYPE ROWS */
+.fraud-type-row{display:flex;align-items:center;gap:0.7rem;padding:0.55rem 0.4rem;border-bottom:1px solid rgba(255,255,255,0.04);cursor:pointer;border-radius:6px;transition:background 0.15s;}
+.fraud-type-row:last-child{border:none;}
+.fraud-type-row:hover{background:rgba(255,255,255,0.03);}
+.fraud-type-row.selected{background:var(--primary-dark);}
+.fraud-bar-wrap{flex:1;background:rgba(255,255,255,0.06);border-radius:100px;height:5px;}
+.fraud-bar-fill{height:5px;border-radius:100px;}
+
+/* TECH GRID */
+.tech-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:0.8rem;}
+.tech-card{
+  background:var(--card);border:1px solid var(--border);border-radius:12px;
+  padding:1rem;text-align:center;cursor:pointer;
+  transition:border-color 0.2s,transform 0.15s,box-shadow 0.2s;
+}
+.tech-card:hover{border-color:var(--primary);transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,0,0,0.3);}
+.tech-card.selected{border-color:var(--primary);box-shadow:0 0 0 2px var(--primary-glow),0 4px 16px rgba(0,0,0,0.3);}
+.tech-icon{font-size:1.6rem;margin-bottom:0.5rem;}
+.tech-name{font-size:0.8rem;font-weight:700;color:var(--text);}
+.tech-role{font-size:0.68rem;color:var(--muted);margin-top:0.15rem;}
+
+/* DONUT LEGEND */
+.dleg{display:flex;flex-direction:column;gap:0.55rem;margin-top:0.8rem;}
+.dleg-row{display:flex;align-items:center;justify-content:space-between;font-size:0.78rem;cursor:pointer;padding:0.25rem 0.4rem;border-radius:6px;transition:background 0.15s;}
+.dleg-row:hover{background:rgba(255,255,255,0.04);}
+.dleg-row.selected{background:var(--primary-dark);}
+.dleg-dot{width:9px;height:9px;border-radius:2px;flex-shrink:0;}
+
+/* FOOTER */
+footer{border-top:1px solid var(--border);padding:1.2rem 2rem;text-align:center;color:var(--muted);font-size:0.75rem;}
+footer b{color:var(--primary);transition:color 0.4s;}
+
+/* HERO STRIP */
+.hero-strip{background:var(--bg2);border-bottom:1px solid var(--border);padding:1rem 1.8rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.8rem;}
+.hero-title{font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:1.5px;color:var(--text);}
+.hero-title em{color:var(--primary);font-style:normal;transition:color 0.4s;}
+.hero-meta{display:flex;gap:1.5rem;flex-wrap:wrap;}
+.hero-meta span{font-size:0.75rem;color:var(--muted);display:flex;align-items:center;gap:0.3rem;}
+.hero-meta span b{color:var(--text);}
+
+/* SCROLL BAR */
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--muted2);border-radius:4px;}
+
+/* ML bar rows */
+.ml-bar-row{display:flex;align-items:center;gap:0.7rem;margin-bottom:0.5rem;font-size:0.78rem;cursor:pointer;padding:0.2rem 0.4rem;border-radius:6px;transition:background 0.15s;}
+.ml-bar-row:hover{background:rgba(255,255,255,0.04);}
+.ml-bar-row.selected{background:var(--primary-dark);}
+.ml-name{width:130px;color:var(--muted);flex-shrink:0;font-size:0.74rem;}
+.ml-bar-track{flex:1;background:rgba(255,255,255,0.06);border-radius:100px;height:7px;}
+.ml-bar-fill{height:7px;border-radius:100px;transition:background 0.4s;}
+.ml-pct{width:38px;text-align:right;color:var(--text);font-weight:700;font-family:'DM Mono',monospace;font-size:0.74rem;}
+
+/* ══════════ LOGIN OVERLAY ══════════ */
+#loginOverlay {
+  position:fixed;top:0;left:0;width:100%;height:100%;
+  background:rgba(5,8,18,0.97);
+  backdrop-filter:blur(24px);
+  z-index:9999;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  transition:opacity 0.5s,visibility 0.5s;
+}
+#loginOverlay.hidden{opacity:0;visibility:hidden;pointer-events:none;}
+.login-box{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:20px;
+  padding:2.8rem 2.4rem;
+  width:100%;max-width:400px;
+  box-shadow:0 0 60px rgba(79,158,255,0.08),0 24px 80px rgba(0,0,0,0.6);
+  position:relative;overflow:hidden;
+}
+.login-box::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#818cf8,#4f9eff,#34d399);border-radius:20px 20px 0 0;}
+.login-logo{font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:3px;color:#4f9eff;text-align:center;margin-bottom:0.3rem;}
+.login-logo span{display:block;font-size:0.65rem;font-family:'Outfit',sans-serif;letter-spacing:1.5px;text-transform:uppercase;color:#6b7a99;font-weight:600;}
+.login-tagline{text-align:center;font-size:0.78rem;color:#6b7a99;margin-bottom:2rem;padding-bottom:1.5rem;border-bottom:1px solid rgba(255,255,255,0.08);}
+.login-tab-row{display:flex;gap:0.5rem;margin-bottom:1.8rem;background:#0d1120;border-radius:10px;padding:0.3rem;}
+.login-tab{flex:1;text-align:center;padding:0.5rem;border-radius:7px;font-size:0.78rem;font-weight:600;letter-spacing:0.5px;cursor:pointer;transition:all 0.2s;color:#6b7a99;}
+.login-tab.active{background:#4f9eff;color:#fff;box-shadow:0 2px 12px rgba(79,158,255,0.3);}
+.login-field{margin-bottom:1.1rem;}
+.login-field label{display:block;font-size:0.68rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6b7a99;margin-bottom:0.45rem;}
+.login-field input{
+  width:100%;background:#0d1120;border:1px solid rgba(255,255,255,0.08);border-radius:8px;
+  padding:0.7rem 1rem;color:#e8edf5;font-family:'Outfit',sans-serif;font-size:0.9rem;
+  outline:none;transition:border-color 0.2s,box-shadow 0.2s;
+}
+.login-field input:focus{border-color:#4f9eff;box-shadow:0 0 0 3px rgba(79,158,255,0.08);}
+.login-field input::placeholder{color:#3d4a63;}
+.login-error{background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.3);color:#f87171;font-size:0.75rem;padding:0.55rem 0.85rem;border-radius:7px;margin-bottom:1rem;display:none;text-align:center;}
+.login-error.show{display:block;}
+.login-btn{
+  width:100%;padding:0.8rem;background:#4f9eff;color:#fff;border:none;border-radius:9px;
+  font-family:'Outfit',sans-serif;font-size:0.9rem;font-weight:700;letter-spacing:0.5px;cursor:pointer;
+  transition:opacity 0.2s,transform 0.15s,box-shadow 0.2s;
+  box-shadow:0 4px 16px rgba(79,158,255,0.2);margin-top:0.3rem;
+}
+.login-btn:hover{opacity:0.92;transform:translateY(-1px);box-shadow:0 6px 20px rgba(79,158,255,0.3);}
+.login-btn:active{transform:translateY(0);}
+.login-footer{text-align:center;margin-top:1.5rem;font-size:0.7rem;color:#3d4a63;}
+.nav-user{display:flex;align-items:center;gap:0.7rem;}
+.nav-user-badge{display:flex;align-items:center;gap:0.5rem;background:rgba(79,158,255,0.08);border:1px solid rgba(79,158,255,0.18);padding:0.25rem 0.8rem;border-radius:20px;font-size:0.72rem;font-weight:600;color:#4f9eff;transition:all 0.4s;}
+.nav-user-badge svg{width:13px;height:13px;flex-shrink:0;}
+.nav-logout{background:none;border:1px solid rgba(255,255,255,0.08);color:#6b7a99;padding:0.25rem 0.7rem;border-radius:6px;font-size:0.68rem;font-weight:600;cursor:pointer;font-family:'Outfit',sans-serif;transition:all 0.2s;letter-spacing:0.3px;}
+.nav-logout:hover{border-color:#4f9eff;color:#4f9eff;}
+.admin-only{display:none;}
+.admin-only.show{display:block;}
+.session-toast{
+  position:fixed;bottom:1.5rem;right:1.5rem;z-index:8888;
+  background:#111827;border:1px solid rgba(79,158,255,0.18);
+  padding:0.7rem 1.1rem;border-radius:10px;font-size:0.78rem;color:#e8edf5;
+  display:flex;align-items:center;gap:0.6rem;
+  transform:translateY(80px);opacity:0;transition:all 0.35s;
+  box-shadow:0 8px 32px rgba(0,0,0,0.4);
+}
+.session-toast.show{transform:translateY(0);opacity:1;}
+.session-toast-icon{font-size:1rem;}
+.admin-badge-pill{display:inline-flex;align-items:center;gap:4px;background:rgba(248,113,113,0.12);border:1px solid rgba(248,113,113,0.25);color:#f87171;font-size:0.62rem;font-weight:700;padding:0.15rem 0.55rem;border-radius:100px;letter-spacing:0.5px;margin-left:6px;vertical-align:middle;}
+.user-badge-pill{display:inline-flex;align-items:center;gap:4px;background:rgba(52,211,153,0.12);border:1px solid rgba(52,211,153,0.25);color:#34d399;font-size:0.62rem;font-weight:700;padding:0.15rem 0.55rem;border-radius:100px;letter-spacing:0.5px;margin-left:6px;vertical-align:middle;}
+</style>
+</head>
+<body data-tab="overview">
+
+<!-- ══════ LOGIN OVERLAY ══════ -->
+<div id="loginOverlay">
+  <div class="login-box">
+    <div class="login-logo">CREDITBI <span>Analytics Platform</span></div>
+    <div class="login-tagline">BI-Driven Credit Card Transaction Analytics<br>Anna University Final Year Project 2026</div>
+    <div class="login-tab-row">
+      <div class="login-tab active" id="tabAdmin" onclick="switchLoginTab('admin')">Admin</div>
+      <div class="login-tab" id="tabUser" onclick="switchLoginTab('user')">User</div>
+    </div>
+    <div id="loginError" class="login-error">Invalid credentials. Please try again.</div>
+    <div class="login-field">
+      <label>User ID</label>
+      <input type="text" id="loginId" placeholder="Enter your ID" autocomplete="off" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div class="login-field">
+      <label>Password</label>
+      <input type="password" id="loginPass" placeholder="Enter your password" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="login-btn" onclick="doLogin()">Sign In →</button>
+    <div class="login-footer">Secured access — Adhiparasakthi College of Engineering &nbsp;|&nbsp; CSE Dept</div>
+  </div>
+</div>
+
+<!-- Session Toast -->
+<div class="session-toast" id="sessionToast">
+  <span class="session-toast-icon">✓</span>
+  <span id="sessionToastMsg">Welcome back!</span>
+</div>
+
+<div class="shell">
+
+<!-- ══════ TOP NAV ══════ -->
+<nav class="topnav">
+  <div class="nav-logo">CREDITBI <span>Analytics</span></div>
+  <div id="navRight"><div class="nav-tag" id="navTag">● OVERVIEW</div></div>
+</nav>
+
+<!-- ══════ HERO STRIP ══════ -->
+<div class="hero-strip">
+  <div class="hero-title">BI-DRIVEN <em id="heroAccent">CREDIT CARD</em> TRANSACTION ANALYTICS</div>
+  <div class="hero-meta">
+    <span>👤 <b>Karthik Raja K</b> — 510122104014</span>
+    <span>👤 <b>Harish Ragaventra G</b> — 510122104011</span>
+    <span>🎓 <b>Guide:</b> Mr. S. Narayanan M.E., AP/CSE</span>
+    <span>🏛 <b>Adhiparasakthi College of Engineering</b></span>
+  </div>
+</div>
+
+<div class="body-wrap">
+
+  <!-- ══════ SIDEBAR NAV ══════ -->
+  <aside class="sidenav">
+    <div class="sidenav-label">Navigation</div>
+    <div class="sidenav-item active" data-tab="overview" onclick="switchTab(this)">
+      <svg class="sidenav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Overview
+    </div>
+    <div class="sidenav-item" data-tab="transactions" onclick="switchTab(this)">
+      <svg class="sidenav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Transactions
+    </div>
+    <div class="sidenav-item" data-tab="fraud" onclick="switchTab(this)">
+      <svg class="sidenav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      Fraud Risk
+    </div>
+    <div class="sidenav-item" data-tab="customers" onclick="switchTab(this)">
+      <svg class="sidenav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Customers
+    </div>
+    <div class="sidenav-item" data-tab="tech" onclick="switchTab(this)">
+      <svg class="sidenav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+      Tech Stack
+    </div>
+    <div class="sidenav-sep"></div>
+    <div class="sidenav-label">Dataset</div>
+    <div style="padding:0 1.4rem;font-size:0.74rem;color:var(--muted);line-height:1.6;">
+      <div style="color:var(--text);font-weight:600;">657K Transactions</div>
+      <div>8,513 Customers</div>
+      <div>₹55.4M Revenue</div>
+      <div>28.6% Fraud Rate</div>
+    </div>
+    <div class="sidenav-sep admin-only"></div>
+    <div class="sidenav-label admin-only">Admin Panel</div>
+    <div class="admin-only" style="padding:0 1.4rem;font-size:0.73rem;line-height:1.7;">
+      <div style="color:#f87171;font-weight:700;margin-bottom:0.3rem;">🔐 Admin Access</div>
+      <div style="color:var(--muted)">Full data access</div>
+      <div style="color:var(--muted)">Export enabled</div>
+      <div style="color:var(--muted)">Fraud alerts: ON</div>
+      <div style="color:var(--muted)">User mgmt: ON</div>
+    </div>
+  </aside>
+
+  <!-- ══════ CONTENT AREA ══════ -->
+  <div class="content-area">
+
+    <!-- ══════ LEFT SUMMARY PANEL ══════ -->
+    <div class="summary-panel" id="summaryPanel">
+      <div class="sp-header">
+        <div class="sp-title" id="spTitle">SELECTION DETAILS</div>
+        <button class="sp-close" onclick="clearSelection()" title="Clear selection">✕</button>
+      </div>
+      <div id="spContent">
+        <div class="sp-empty">
+          <div class="sp-empty-icon">↖</div>
+          <div class="sp-empty-text">Click any KPI card, chart element, or row to see a detailed summary here</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════ MAIN PANELS ══════ -->
+    <div class="main-scroll">
+
+      <!-- ─── OVERVIEW ─── -->
+      <div class="tab-panel active" id="panel-overview">
+        <div class="sec-header">
+          <div class="sec-tag">📊 Portfolio Overview</div>
+          <div class="sec-title">KEY PERFORMANCE INDICATORS</div>
+          <div class="sec-sub">Aggregated metrics across 650,000+ credit card transactions — Anna University Final Year Project 2026</div>
+        </div>
+
+        <div class="kpi-grid">
+          <div class="kpi-card" style="--kpi-color:#4f9eff" onclick="selectKPI(this,'Total Revenue','₹55.4M','All card categories combined','Revenue grew 12.3% year-over-year, driven primarily by Blue card holders who account for 83% of all revenue. Q3 was the peak quarter at ₹16.2M.','kpi',[['Q1','₹12.1M'],['Q2','₹13.8M'],['Q3 (Peak)','₹16.2M'],['Q4','₹13.3M']])">
+            <div class="kpi-label">Total Revenue</div>
+            <div class="kpi-value">₹55.4M</div>
+            <div class="kpi-sub">All card categories</div>
+            <span class="kpi-badge badge-up">+12.3% YoY</span>
+          </div>
+          <div class="kpi-card" style="--kpi-color:#34d399" onclick="selectKPI(this,'Total Interest Earned','₹7.9M','Across all transactions','Interest earnings grew 8.1% YoY. Blue cards contribute ₹6.58M (83.3%) of total interest. The interest-to-revenue ratio stands at 14.3%, indicating healthy lending margins.','kpi',[['Blue Card','₹6.58M'],['Silver Card','₹1.09M'],['Gold Card','₹0.18M'],['Platinum','₹0.04M']])">
+            <div class="kpi-label">Total Interest Earned</div>
+            <div class="kpi-value">₹7.9M</div>
+            <div class="kpi-sub">Across all transactions</div>
+            <span class="kpi-badge badge-up">+8.1% YoY</span>
+          </div>
+          <div class="kpi-card" style="--kpi-color:#f59e0b" onclick="selectKPI(this,'Total Transactions','657K','Transaction count across all cards','657,000 total transactions processed. Blue cards account for 84% (551,398). Q3 saw the highest transaction volume. Average transaction value: ₹84.3 per transaction.','kpi',[['Blue Card','551,398'],['Silver Card','74,861'],['Gold Card','18,200'],['Platinum','12,541']])">
+            <div class="kpi-label">Total Transactions</div>
+            <div class="kpi-value">657K</div>
+            <div class="kpi-sub">Transaction count</div>
+            <span class="kpi-badge badge-info">Q3 Peak</span>
+          </div>
+          <div class="kpi-card" style="--kpi-color:#f87171" onclick="selectKPI(this,'Fraud Rate','28.6%','Of all transactions flagged','286 fraudulent transactions detected out of 1,000 sampled. Card Not Present fraud is the most prevalent type (₹3.0M). Maharashtra leads with 40 fraud cases. Holiday season (Dec) sees highest fraud spikes.','kpi',[['Fraudulent Txns','286'],['Fraud Amount','₹3.0M'],['Top State','Maharashtra (40)'],['Peak Month','December (34)']])">
+            <div class="kpi-label">Fraud Rate</div>
+            <div class="kpi-value">28.6%</div>
+            <div class="kpi-sub">286 fraudulent transactions</div>
+            <span class="kpi-badge badge-warn">High Risk</span>
+          </div>
+          <div class="kpi-card" style="--kpi-color:#a78bfa" onclick="selectKPI(this,'Total Customers','8,513','Active credit card holders','8,513 unique customers in the portfolio. Businessmen and self-employed are the top revenue contributors. Age group 40-50 spends the most (₹5.2M). Graduates lead by education level.','kpi',[['Top Occupation','Businessman (₹3.09M)'],['Top Age Group','40-50 (₹5.2M)'],['Top Education','Graduate (₹4.2M)'],['Avg Customer Value','₹6,508']])">
+            <div class="kpi-label">Total Customers</div>
+            <div class="kpi-value">8,513</div>
+            <div class="kpi-sub">Active cardholders</div>
+            <span class="kpi-badge badge-up">Active</span>
+          </div>
+          <div class="kpi-card" style="--kpi-color:#34d399" onclick="selectKPI(this,'Model Accuracy','99.2%','Random Forest classifier','Random Forest achieved the highest accuracy at 99.2% for fraud detection. Outperforms Logistic Regression (96.8%), Isolation Forest (94.5%), DBSCAN (90.1%) and K-Means (88.2%).','kpi',[['Random Forest','99.2%'],['Logistic Reg','96.8%'],['Isolation Forest','94.5%'],['DBSCAN','90.1%'],['K-Means','88.2%']])">
+            <div class="kpi-label">Model Accuracy</div>
+            <div class="kpi-value">99.2%</div>
+            <div class="kpi-sub">Random Forest classifier</div>
+            <span class="kpi-badge badge-up">Best Model</span>
+          </div>
+        </div>
+
+        <div class="chart-row chart-row-2">
+          <div class="chart-card" onclick="selectChart(this,'Revenue by Quarter','Q3 2024 was the peak revenue quarter at ₹16.2M, representing 29.2% of annual revenue. Q1 and Q4 perform similarly (~₹12-13M). Quarter-over-quarter growth was strongest from Q1→Q3.','overview',[['Q1','₹12.1M','21.8%'],['Q2','₹13.8M','24.9%'],['Q3','₹16.2M','29.2%'],['Q4','₹13.3M','24.0%']])">
+            <div class="ct">Revenue by Quarter</div>
+            <div class="cs">All card categories combined</div>
+            <div class="ccanv"><canvas id="qtrChart"></canvas></div>
+          </div>
+          <div class="chart-card" onclick="selectChart(this,'Revenue by Card Category','Blue card dominates the portfolio with 83.3% of revenue (₹46.1M). Silver contributes 13%, Gold 2.7%, Platinum 1.1%. Significant concentration risk in Blue card segment.','overview',[['Blue','₹46.1M','83.3%'],['Silver','₹7.2M','13.0%'],['Gold','₹1.5M','2.7%'],['Platinum','₹0.6M','1.1%']])">
+            <div class="ct">Revenue by Card Category</div>
+            <div class="cs">Blue card dominates at 83%</div>
+            <div class="ccanv"><canvas id="cardChart"></canvas></div>
+            <div style="display:flex;gap:0.8rem;flex-wrap:wrap;margin-top:0.7rem;font-size:0.7rem;">
+              <span style="display:flex;align-items:center;gap:4px;color:var(--muted)"><span style="width:9px;height:9px;border-radius:2px;background:#4f9eff;display:inline-block"></span>Blue 83%</span>
+              <span style="display:flex;align-items:center;gap:4px;color:var(--muted)"><span style="width:9px;height:9px;border-radius:2px;background:#34d399;display:inline-block"></span>Silver 13%</span>
+              <span style="display:flex;align-items:center;gap:4px;color:var(--muted)"><span style="width:9px;height:9px;border-radius:2px;background:#f59e0b;display:inline-block"></span>Gold 3%</span>
+              <span style="display:flex;align-items:center;gap:4px;color:var(--muted)"><span style="width:9px;height:9px;border-radius:2px;background:#a78bfa;display:inline-block"></span>Platinum 1%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── TRANSACTIONS ─── -->
+      <div class="tab-panel" id="panel-transactions">
+        <div class="sec-header">
+          <div class="sec-tag">💳 Transaction Analysis</div>
+          <div class="sec-title">SPENDING PATTERNS</div>
+          <div class="sec-sub">Revenue distribution by expenditure type, payment mode, and card category</div>
+        </div>
+
+        <div class="chart-row chart-row-2">
+          <div class="chart-card" style="grid-column:span 2;" onclick="selectChart(this,'Revenue by Expenditure Type','Bills and Entertainment are the top two expenditure categories at ₹14.2M and ₹13.8M respectively. Together they account for 50.5% of total expenditure revenue. Travel is the smallest at ₹5.1M (9.2%).','transactions',[['Bills','₹14.2M','25.6%'],['Entertainment','₹13.8M','24.9%'],['Fuel','₹12.1M','21.8%'],['Grocery','₹9.8M','17.7%'],['Food','₹8.4M','15.2%'],['Travel','₹5.1M','9.2%']])">
+            <div class="ct">Revenue by Expenditure Type</div>
+            <div class="cs">Top 6 spending categories</div>
+            <div class="ccanv-tall"><canvas id="expChart"></canvas></div>
+          </div>
+        </div>
+        <div class="chart-row chart-row-2">
+          <div class="chart-card" onclick="selectChart(this,'Payment Mode Distribution','Swipe (magnetic stripe) dominates at ₹35M (63.2%), followed by Chip at ₹14.2M (25.6%) and Online at ₹6.2M (11.2%). High swipe usage suggests room to migrate users to more secure payment methods.','transactions',[['Swipe','₹35M','63.2%'],['Chip','₹14.2M','25.6%'],['Online','₹6.2M','11.2%']])">
+            <div class="ct">Payment Mode</div>
+            <div class="cs">Revenue by chip usage</div>
+            <div class="ccanv"><canvas id="chipChart"></canvas></div>
+            <div style="display:flex;flex-direction:column;gap:0.4rem;margin-top:0.7rem;font-size:0.72rem;">
+              <span style="display:flex;align-items:center;justify-content:space-between;color:var(--muted)"><span style="display:flex;align-items:center;gap:4px;"><span style="width:9px;height:9px;border-radius:2px;background:#f59e0b;display:inline-block"></span>Swipe</span><b style="color:var(--text);font-family:'DM Mono',monospace;">₹35M</b></span>
+              <span style="display:flex;align-items:center;justify-content:space-between;color:var(--muted)"><span style="display:flex;align-items:center;gap:4px;"><span style="width:9px;height:9px;border-radius:2px;background:#fb923c;display:inline-block"></span>Chip</span><b style="color:var(--text);font-family:'DM Mono',monospace;">₹14.2M</b></span>
+              <span style="display:flex;align-items:center;justify-content:space-between;color:var(--muted)"><span style="display:flex;align-items:center;gap:4px;"><span style="width:9px;height:9px;border-radius:2px;background:#fcd34d;display:inline-block"></span>Online</span><b style="color:var(--text);font-family:'DM Mono',monospace;">₹6.2M</b></span>
+            </div>
+          </div>
+          <div class="chart-card" onclick="selectChart(this,'Card Category Performance','Blue card is the clear leader with 83.9% of all transactions (551,398). Platinum has the lowest volume (12,541 txns) but likely the highest per-transaction value among premium segments.','transactions',[['Blue','₹46.1M','551,398 txns','₹6.58M interest'],['Silver','₹7.2M','74,861 txns','₹1.09M interest'],['Gold','₹1.5M','18,200 txns','₹0.18M interest'],['Platinum','₹0.6M','12,541 txns','₹0.04M interest']])">
+            <div class="ct">Card Category Performance</div>
+            <div class="cs">Revenue, transactions, and interest</div>
+            <div style="overflow-x:auto;margin-top:0.5rem;">
+              <table class="data-table">
+                <thead><tr><th>Card</th><th>Revenue</th><th>Transactions</th><th>Interest</th><th>Status</th></tr></thead>
+                <tbody>
+                  <tr onclick="selectRow(this,'Blue Card','₹46.1M Revenue','551,398 transactions, ₹6.58M interest earned. Top performer across all metrics. Accounts for 83% of total portfolio revenue.','transactions',[['Revenue','₹46.1M'],['Transactions','551,398'],['Interest','₹6.58M'],['Rev Share','83.3%']])" style="cursor:pointer;">
+                    <td><span class="pill pill-blue">Blue</span></td><td>₹46.1M</td><td>5,51,398</td><td>₹6.58M</td><td><span class="pill pill-green">Top</span></td>
+                  </tr>
+                  <tr onclick="selectRow(this,'Silver Card','₹7.2M Revenue','74,861 transactions, ₹1.09M interest earned. Average performer with consistent volumes.','transactions',[['Revenue','₹7.2M'],['Transactions','74,861'],['Interest','₹1.09M'],['Rev Share','13.0%']])" style="cursor:pointer;">
+                    <td><span class="pill pill-purple">Silver</span></td><td>₹7.2M</td><td>74,861</td><td>₹1.09M</td><td><span class="pill pill-amber">Avg</span></td>
+                  </tr>
+                  <tr onclick="selectRow(this,'Gold Card','₹1.5M Revenue','18,200 transactions, ₹0.18M interest earned. Low volume premium segment.','transactions',[['Revenue','₹1.5M'],['Transactions','18,200'],['Interest','₹0.18M'],['Rev Share','2.7%']])" style="cursor:pointer;">
+                    <td><span class="pill pill-amber">Gold</span></td><td>₹1.5M</td><td>18,200</td><td>₹0.18M</td><td><span class="pill pill-amber">Avg</span></td>
+                  </tr>
+                  <tr onclick="selectRow(this,'Platinum Card','₹0.6M Revenue','12,541 transactions, ₹0.04M interest. Smallest volume segment needing acquisition push.','transactions',[['Revenue','₹0.6M'],['Transactions','12,541'],['Interest','₹0.04M'],['Rev Share','1.1%']])" style="cursor:pointer;">
+                    <td><span class="pill pill-red">Platinum</span></td><td>₹0.6M</td><td>12,541</td><td>₹0.04M</td><td><span class="pill pill-red">Low Vol</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── FRAUD RISK ─── -->
+      <div class="tab-panel" id="panel-fraud">
+        <div class="sec-header">
+          <div class="sec-tag">🛡 Fraud Risk Analysis</div>
+          <div class="sec-title">FRAUD DETECTION DASHBOARD</div>
+          <div class="sec-sub">ML-powered risk scoring with 99.2% model accuracy — 286 fraud cases detected</div>
+        </div>
+
+        <div class="kpi-grid">
+          <div class="kpi-card" style="--kpi-color:#f87171" onclick="selectKPI(this,'Fraud Rate','28.6%','Of all transactions sampled','28.6% fraud rate is critically high. 286 out of ~1,000 sampled transactions were fraudulent. Card Not Present fraud dominates. Random Forest model achieved 99.2% detection accuracy.','fraud',[['Total Fraud Txns','286'],['Fraud Amount','₹3.0M'],['Detection Rate','99.2%'],['Miss Rate','0.8%']])">
+            <div class="kpi-label">Fraud Rate</div>
+            <div class="fraud-rate-big">28.6%</div>
+            <div class="kpi-sub">Of all transactions</div>
+          </div>
+          <div class="kpi-card" style="--kpi-color:#f87171" onclick="selectKPI(this,'Fraudulent Transactions','286','Detected fraud cases','286 confirmed fraudulent transactions detected in the dataset. Peak fraud month is December with 34 cases. Maharashtra state leads with 40 cases. Holiday seasons show elevated risk.','fraud',[['Dec (Peak)','34 cases'],['Nov','29 cases'],['Jul','28 cases'],['Jun','26 cases']])">
+            <div class="kpi-label">Fraudulent Transactions</div>
+            <div class="kpi-value">286</div>
+            <div class="kpi-sub">Detected cases</div>
+          </div>
+          <div class="kpi-card" style="--kpi-color:#fb923c" onclick="selectKPI(this,'Critical Risk Score','10.70','Risk index value','The critical risk tier contains 10.85% of transactions with the highest fraud probability. High Risk tier adds another 18.81%. Combined, 29.66% of transactions are flagged as elevated risk, closely matching the overall fraud rate.','fraud',[['Critical Risk','10.85%'],['High Risk','18.81%'],['Medium Risk','27.93%'],['Low Risk','42.42%']])">
+            <div class="kpi-label">Critical Risk Score</div>
+            <div class="kpi-value">10.70</div>
+            <div class="kpi-sub">Risk index</div>
+          </div>
+          <div class="kpi-card" style="--kpi-color:#f87171" onclick="selectKPI(this,'Fraud Amount','₹3.0M','Total fraudulent value','₹3.0M lost to Card Not Present fraud alone. Total fraud across all types exceeds ₹10.8M. This represents approximately 19.5% of total revenue — a significant financial impact requiring immediate intervention.','fraud',[['Card Not Present','₹3.0M'],['Card Skimming','₹2.4M'],['Identity Theft','₹2.1M'],['Account Takeover','₹1.8M'],['Phishing','₹1.5M']])">
+            <div class="kpi-label">Fraud Amount</div>
+            <div class="kpi-value">₹3M</div>
+            <div class="kpi-sub">Card Not Present fraud value</div>
+          </div>
+          <div class="kpi-card" style="--kpi-color:#a78bfa" onclick="selectKPI(this,'Top Fraud Type','Card Not Present','Most prevalent fraud category','Card Not Present fraud accounts for ₹3.0M — the single largest fraud type. Online transactions are most vulnerable. Implementing 3DS authentication and ML-based anomaly detection can significantly reduce CNP fraud.','fraud',[['CNP Fraud','₹3.0M (100%)'],['Skimming','₹2.4M (80%)'],['Identity Theft','₹2.1M (70%)'],['Acct Takeover','₹1.8M (60%)'],['Phishing','₹1.5M (50%)']])">
+            <div class="kpi-label">Top Fraud Type</div>
+            <div class="kpi-value" style="font-size:1rem;padding-top:0.4rem;line-height:1.3">Card Not Present</div>
+            <div class="kpi-sub">Most prevalent fraud</div>
+          </div>
+        </div>
+
+        <div class="chart-row chart-row-2">
+          <div class="chart-card" onclick="selectChart(this,'Risk Level Distribution','Low Risk transactions (42.42%) form the majority. However, combined High + Critical risk (29.66%) closely matches the 28.6% fraud rate, validating the risk model. Medium risk accounts for 27.93%.','fraud',[['Low Risk','42.42%'],['Medium Risk','27.93%'],['High Risk','18.81%'],['Critical Risk','10.85%']])">
+            <div class="ct">Risk Level Distribution</div>
+            <div class="cs">Transaction amount by fraud risk tier</div>
+            <div class="risk-bar" style="margin-top:1.5rem;">
+              <div style="width:42.42%;background:#34d399;" onclick="event.stopPropagation();selectRisk('Low Risk','42.42%','₹23.5M at low fraud probability. Standard monitoring protocols apply. These transactions have risk scores below 3.0.')"></div>
+              <div style="width:27.93%;background:#f59e0b;" onclick="event.stopPropagation();selectRisk('Medium Risk','27.93%','₹15.5M flagged for enhanced review. Risk scores between 3.0-6.5. Secondary authentication recommended for these transactions.')"></div>
+              <div style="width:18.81%;background:#f87171;" onclick="event.stopPropagation();selectRisk('High Risk','18.81%','₹10.4M requiring immediate review. Risk scores 6.5-8.5. Transactions should be held for manual verification before processing.')"></div>
+              <div style="width:10.85%;background:#e53e3e;" onclick="event.stopPropagation();selectRisk('Critical Risk','10.85%','₹6.0M with highest fraud probability. Risk scores above 8.5. Auto-block recommended. These match the ML model fraud flags with 99.2% accuracy.')"></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:0.5rem;margin-top:0.5rem;">
+              <div class="dleg-row" onclick="event.stopPropagation();selectRisk('Low Risk','42.42%','₹23.5M at low fraud probability. Standard monitoring protocols apply.')"><span style="display:flex;align-items:center;gap:8px;"><span class="dleg-dot" style="background:#34d399"></span>Low Risk</span><span style="color:#34d399;font-weight:600;font-family:'DM Mono',monospace;">42.42%</span></div>
+              <div class="dleg-row" onclick="event.stopPropagation();selectRisk('Medium Risk','27.93%','₹15.5M flagged for enhanced review. Risk scores between 3.0-6.5.')"><span style="display:flex;align-items:center;gap:8px;"><span class="dleg-dot" style="background:#f59e0b"></span>Medium Risk</span><span style="color:#f59e0b;font-weight:600;font-family:'DM Mono',monospace;">27.93%</span></div>
+              <div class="dleg-row" onclick="event.stopPropagation();selectRisk('High Risk','18.81%','₹10.4M requiring immediate review. Risk scores 6.5-8.5.')"><span style="display:flex;align-items:center;gap:8px;"><span class="dleg-dot" style="background:#f87171"></span>High Risk</span><span style="color:#f87171;font-weight:600;font-family:'DM Mono',monospace;">18.81%</span></div>
+              <div class="dleg-row" onclick="event.stopPropagation();selectRisk('Critical Risk','10.85%','₹6.0M with highest fraud probability. Auto-block recommended.')"><span style="display:flex;align-items:center;gap:8px;"><span class="dleg-dot" style="background:#e53e3e"></span>Critical Risk</span><span style="color:#e53e3e;font-weight:600;font-family:'DM Mono',monospace;">10.85%</span></div>
+            </div>
+          </div>
+
+          <div class="chart-card" onclick="selectChart(this,'Fraudulent Transactions by State','Maharashtra leads with 40 fraud cases, followed by Karnataka (36) and Rajasthan (34). Top 10 states account for 305 total fraud cases. Western and Southern states show higher fraud concentration.','fraud',[['Maharashtra','40 cases'],['Karnataka','36 cases'],['Rajasthan','34 cases'],['West Bengal','34 cases'],['Uttar Pradesh','33 cases']])">
+            <div class="ct">Fraudulent Transactions by State</div>
+            <div class="cs">Top 10 states — click a row for details</div>
+            <div style="margin-top:0.5rem;">
+              <div class="state-bar-row" onclick="event.stopPropagation();selectState('Maharashtra',40,100,'Western India commercial hub. High urban transaction density drives both volume and fraud. Card Not Present fraud is primary type.')"><span class="state-name">Maharashtra</span><div class="state-bar-wrap"><div class="state-bar-fill" style="width:100%"></div></div><span class="state-count">40</span></div>
+              <div class="state-bar-row" onclick="event.stopPropagation();selectState('Karnataka',36,90,'Bengaluru tech hub contributes to high online transaction volumes, increasing CNP fraud exposure.')"><span class="state-name">Karnataka</span><div class="state-bar-wrap"><div class="state-bar-fill" style="width:90%"></div></div><span class="state-count">36</span></div>
+              <div class="state-bar-row" onclick="event.stopPropagation();selectState('Rajasthan',34,85,'Tourism-heavy state with high travel & fuel expenditure. Skimming fraud prevalent at petrol stations.')"><span class="state-name">Rajasthan</span><div class="state-bar-wrap"><div class="state-bar-fill" style="width:85%"></div></div><span class="state-count">34</span></div>
+              <div class="state-bar-row" onclick="event.stopPropagation();selectState('West Bengal',34,85,'Kolkata financial sector and retail activity drives fraud in bills and grocery categories.')"><span class="state-name">West Bengal</span><div class="state-bar-wrap"><div class="state-bar-fill" style="width:85%"></div></div><span class="state-count">34</span></div>
+              <div class="state-bar-row" onclick="event.stopPropagation();selectState('Uttar Pradesh',33,82,'Large population base creates high transaction volume. Identity theft is the primary fraud type in this region.')"><span class="state-name">Uttar Pradesh</span><div class="state-bar-wrap"><div class="state-bar-fill" style="width:82%"></div></div><span class="state-count">33</span></div>
+              <div class="state-bar-row" onclick="event.stopPropagation();selectState('Tamil Nadu',29,72,'Chennai IT corridor and manufacturing zones. Phishing attacks targeting tech-savvy professionals notable.')"><span class="state-name">Tamil Nadu</span><div class="state-bar-wrap"><div class="state-bar-fill" style="width:72%"></div></div><span class="state-count">29</span></div>
+              <div class="state-bar-row" onclick="event.stopPropagation();selectState('Telangana',28,70,'Hyderabad pharma and tech sector. Account takeover fraud increasing due to high-value transactions.')"><span class="state-name">Telangana</span><div class="state-bar-wrap"><div class="state-bar-fill" style="width:70%"></div></div><span class="state-count">28</span></div>
+              <div class="state-bar-row" onclick="event.stopPropagation();selectState('Gujarat',27,67,'Major trading and textile hub. Business credit card misuse and skimming at fuel stations is prevalent.')"><span class="state-name">Gujarat</span><div class="state-bar-wrap"><div class="state-bar-fill" style="width:67%"></div></div><span class="state-count">27</span></div>
+              <div class="state-bar-row" onclick="event.stopPropagation();selectState('Delhi',23,57,'Capital region sees mixed fraud types. High entertainment and food spending creates anomaly detection challenges.')"><span class="state-name">Delhi</span><div class="state-bar-wrap"><div class="state-bar-fill" style="width:57%"></div></div><span class="state-count">23</span></div>
+              <div class="state-bar-row" onclick="event.stopPropagation();selectState('Kerala',21,52,'Tourism and remittance economy. International card-not-present fraud is the primary concern here.')"><span class="state-name">Kerala</span><div class="state-bar-wrap"><div class="state-bar-fill" style="width:52%"></div></div><span class="state-count">21</span></div>
+            </div>
+          </div>
+
+          <div class="chart-card" style="grid-column:span 2;" onclick="selectChart(this,'Monthly Fraud Trend','Fraud shows a clear upward trend through the year. Jan-May baseline: ~20 cases/month. Jun-Aug spike: 26-28 cases. Critical peak in December at 34 cases (+100% vs Jan). Holiday shopping season is highest risk period.','fraud',[['Jan','17 cases'],['Jun','26 cases'],['Jul (Spike)','28 cases'],['Nov','29 cases'],['Dec (Peak)','34 cases']])">
+            <div class="ct">Fraudulent Transactions by Month</div>
+            <div class="cs">Seasonal fraud pattern — peaks in Q4 holiday season</div>
+            <div class="ccanv"><canvas id="monthChart"></canvas></div>
+          </div>
+        </div>
+
+        <div class="chart-row chart-row-1">
+          <div class="chart-card">
+            <div class="ct">Fraud Type Breakdown</div>
+            <div class="cs">Transaction amounts by fraud category — click a row</div>
+            <div style="padding:0.3rem 0;">
+              <div class="fraud-type-row" onclick="selectFraud('Card Not Present','₹3.0M',100,'#f87171','Card Not Present (CNP) fraud occurs in online/phone transactions where the physical card is absent. It is the dominant fraud type. Implementing 3D Secure (3DS2) authentication can reduce CNP fraud by up to 70%.')">
+                <span style="width:145px;font-size:0.78rem;color:var(--muted)">Card Not Present</span>
+                <div class="fraud-bar-wrap"><div class="fraud-bar-fill" style="width:100%;background:#f87171"></div></div>
+                <span style="width:55px;text-align:right;font-size:0.78rem;font-weight:700;font-family:'DM Mono',monospace;">₹3.0M</span>
+              </div>
+              <div class="fraud-type-row" onclick="selectFraud('Card Skimming','₹2.4M',80,'#fb923c','Card Skimming involves copying magnetic stripe data at compromised POS terminals or ATMs. EMV chip migration can eliminate 90%+ of skimming fraud. High prevalence in fuel stations and ATMs.')">
+                <span style="width:145px;font-size:0.78rem;color:var(--muted)">Card Skimming</span>
+                <div class="fraud-bar-wrap"><div class="fraud-bar-fill" style="width:80%;background:#fb923c"></div></div>
+                <span style="width:55px;text-align:right;font-size:0.78rem;font-weight:700;font-family:'DM Mono',monospace;">₹2.4M</span>
+              </div>
+              <div class="fraud-type-row" onclick="selectFraud('Identity Theft','₹2.1M',70,'#a78bfa','Identity Theft involves fraudsters using stolen personal information to open new accounts or take over existing ones. Strong KYC processes and biometric verification can reduce this significantly.')">
+                <span style="width:145px;font-size:0.78rem;color:var(--muted)">Identity Theft</span>
+                <div class="fraud-bar-wrap"><div class="fraud-bar-fill" style="width:70%;background:#a78bfa"></div></div>
+                <span style="width:55px;text-align:right;font-size:0.78rem;font-weight:700;font-family:'DM Mono',monospace;">₹2.1M</span>
+              </div>
+              <div class="fraud-type-row" onclick="selectFraud('Account Takeover','₹1.8M',60,'#34d399','Account Takeover involves criminals gaining unauthorized access to existing accounts via phishing, data breaches, or SIM swapping. MFA and behavioral analytics are key defenses.')">
+                <span style="width:145px;font-size:0.78rem;color:var(--muted)">Account Takeover</span>
+                <div class="fraud-bar-wrap"><div class="fraud-bar-fill" style="width:60%;background:#34d399"></div></div>
+                <span style="width:55px;text-align:right;font-size:0.78rem;font-weight:700;font-family:'DM Mono',monospace;">₹1.8M</span>
+              </div>
+              <div class="fraud-type-row" onclick="selectFraud('Phishing','₹1.5M',50,'#4f9eff','Phishing attacks trick cardholders into revealing credentials via fake websites or messages. Email security, cardholder education, and real-time URL scanning reduce exposure significantly.')">
+                <span style="width:145px;font-size:0.78rem;color:var(--muted)">Phishing</span>
+                <div class="fraud-bar-wrap"><div class="fraud-bar-fill" style="width:50%;background:#4f9eff"></div></div>
+                <span style="width:55px;text-align:right;font-size:0.78rem;font-weight:700;font-family:'DM Mono',monospace;">₹1.5M</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── CUSTOMERS ─── -->
+      <div class="tab-panel" id="panel-customers">
+        <div class="sec-header">
+          <div class="sec-tag">👥 Customer Intelligence</div>
+          <div class="sec-title">CUSTOMER SEGMENTATION</div>
+          <div class="sec-sub">Revenue distribution by demographics, occupation, and education level</div>
+        </div>
+
+        <div class="chart-row chart-row-2">
+          <div class="chart-card" onclick="selectChart(this,'Revenue by Job Category','Businessmen are the highest-value customer segment at ₹3.09M, followed by Self-employed (₹2.81M) and Government employees (₹2.23M). These top 3 segments account for 67.5% of segmented revenue.','customers',[['Businessman','₹3.09M'],['Self-employed','₹2.81M'],['Govt Employee','₹2.23M'],['White-collar','₹1.68M'],['Blue-collar','₹1.36M'],['Retirees','₹0.82M']])">
+            <div class="ct">Revenue by Job Category</div>
+            <div class="cs">Top contributing occupations</div>
+            <div class="ccanv-tall"><canvas id="jobChart"></canvas></div>
+          </div>
+          <div class="chart-card" onclick="selectChart(this,'Revenue by Education Level','Graduate customers contribute the most revenue at ₹4.2M (36.5%), followed by High School graduates (₹2.8M, 24.3%). Post-graduate and Doctorate holders have lower revenue due to smaller segment size.','customers',[['Graduate','₹4.2M','36.5%'],['High School','₹2.8M','24.3%'],['Unknown','₹1.9M','16.5%'],['Uneducated','₹1.2M','10.4%'],['Post-Grad','₹0.9M','7.8%'],['Doctorate','₹0.4M','3.5%']])">
+            <div class="ct">Revenue by Education Level</div>
+            <div class="cs">Graduate customers lead revenue</div>
+            <div class="ccanv-tall"><canvas id="eduChart"></canvas></div>
+          </div>
+          <div class="chart-card" onclick="selectChart(this,'Revenue by Age Group','The 40-50 age bracket is the top spending cohort at ₹5.2M, followed closely by 50-60 (₹4.8M). Combined, 45-60 year olds account for 61% of age-segmented revenue. Young adults (20-30) contribute only 5.9%.','customers',[['40-50','₹5.2M','32.7%'],['50-60','₹4.8M','30.2%'],['30-40','₹3.1M','19.5%'],['60+','₹1.4M','8.8%'],['20-30','₹0.9M','5.7%']])">
+            <div class="ct">Revenue by Age Group</div>
+            <div class="cs">Middle-aged customers are highest spenders</div>
+            <div class="ccanv"><canvas id="ageChart"></canvas></div>
+          </div>
+
+          <div class="chart-card" onclick="selectChart(this,'ML Model Performance','Random Forest is the best-performing model at 99.2% accuracy for fraud detection. The ensemble approach handles class imbalance better than linear models. All models were trained on the 657K transaction dataset with SMOTE oversampling.','customers',[['Random Forest','99.2%'],['Logistic Reg','96.8%'],['Isolation Forest','94.5%'],['DBSCAN','90.1%'],['K-Means','88.2%']])">
+            <div class="ct">ML Model Performance</div>
+            <div class="cs">Accuracy comparison — click a row</div>
+            <div style="margin-top:0.8rem;">
+              <div class="ml-bar-row" onclick="event.stopPropagation();selectML('Random Forest','99.2%','#34d399','Ensemble method combining 100+ decision trees. Uses bagging and random feature selection. Best performance due to robustness to overfitting and handling of non-linear patterns in fraud data.')">
+                <span class="ml-name">Random Forest</span><div class="ml-bar-track"><div class="ml-bar-fill" style="width:99.2%;background:#34d399;"></div></div><span class="ml-pct">99.2%</span>
+              </div>
+              <div class="ml-bar-row" onclick="event.stopPropagation();selectML('Logistic Regression','96.8%','#4f9eff','Linear classification model. Fast training and interpretable coefficients. Performance limited by inability to capture non-linear fraud patterns. Good baseline model for comparison.')">
+                <span class="ml-name">Logistic Reg.</span><div class="ml-bar-track"><div class="ml-bar-fill" style="width:96.8%;background:#4f9eff;"></div></div><span class="ml-pct">96.8%</span>
+              </div>
+              <div class="ml-bar-row" onclick="event.stopPropagation();selectML('Isolation Forest','94.5%','#f59e0b','Unsupervised anomaly detection. Isolates outliers by randomly partitioning data. Effective for detecting novel fraud patterns without labeled training data.')">
+                <span class="ml-name">Isolation Forest</span><div class="ml-bar-track"><div class="ml-bar-fill" style="width:94.5%;background:#f59e0b;"></div></div><span class="ml-pct">94.5%</span>
+              </div>
+              <div class="ml-bar-row" onclick="event.stopPropagation();selectML('DBSCAN','90.1%','#a78bfa','Density-based spatial clustering. Identifies core, border, and noise points. Effective for detecting fraud clusters in geographic or transaction pattern data.')">
+                <span class="ml-name">DBSCAN</span><div class="ml-bar-track"><div class="ml-bar-fill" style="width:90.1%;background:#a78bfa;"></div></div><span class="ml-pct">90.1%</span>
+              </div>
+              <div class="ml-bar-row" onclick="event.stopPropagation();selectML('K-Means','88.2%','#fb923c','Centroid-based clustering. Groups transactions into k clusters. Lower accuracy due to assumption of spherical clusters and sensitivity to outliers in transaction data.')">
+                <span class="ml-name">K-Means</span><div class="ml-bar-track"><div class="ml-bar-fill" style="width:88.2%;background:#fb923c;"></div></div><span class="ml-pct">88.2%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── TECH STACK ─── -->
+      <div class="tab-panel" id="panel-tech">
+        <div class="sec-header">
+          <div class="sec-tag">⚙ Technology</div>
+          <div class="sec-title">TECH STACK USED</div>
+          <div class="sec-sub">Tools and technologies powering this BI analytics platform</div>
+        </div>
+        <div class="tech-grid">
+          <div class="tech-card" onclick="selectTech(this,'Power BI','Dashboards & DAX','Microsoft Power BI was used for creating interactive dashboards and reports. DAX (Data Analysis Expressions) formulas were written for KPI calculations, time intelligence, and custom measures across all report pages.','tech',[['Purpose','Data Visualization'],['Feature','DAX Formulas'],['Integration','Power Query ETL'],['Output','Interactive Reports']])">
+            <div class="tech-icon">📊</div><div class="tech-name">Power BI</div><div class="tech-role">Dashboards & DAX</div>
+          </div>
+          <div class="tech-card" onclick="selectTech(this,'Python','ML & Analytics','Python is the primary language for machine learning model development, data preprocessing, and statistical analysis. Libraries include Pandas, NumPy, Scikit-learn, Matplotlib, and Seaborn.','tech',[['Purpose','ML Development'],['Libraries','Pandas, NumPy'],['ML Lib','Scikit-learn'],['Visualization','Matplotlib']])">
+            <div class="tech-icon">🐍</div><div class="tech-name">Python</div><div class="tech-role">ML & Analytics</div>
+          </div>
+          <div class="tech-card" onclick="selectTech(this,'PostgreSQL','Database Storage','PostgreSQL serves as the primary relational database for storing 657K+ transaction records, customer data, and fraud labels. Complex SQL queries were used for data aggregation and reporting.','tech',[['Purpose','Data Storage'],['Records','657K+ transactions'],['Features','JSON, Window Fns'],['Integration','Power BI DirectQuery']])">
+            <div class="tech-icon">🗄️</div><div class="tech-name">PostgreSQL</div><div class="tech-role">Database</div>
+          </div>
+          <div class="tech-card" onclick="selectTech(this,'Scikit-learn','ML Models','Scikit-learn powers all supervised and unsupervised ML models: Random Forest (99.2%), Logistic Regression (96.8%), Isolation Forest (94.5%), DBSCAN (90.1%), and K-Means (88.2%). Cross-validation and grid search used for hyperparameter tuning.','tech',[['Best Model','Random Forest 99.2%'],['Techniques','Grid Search CV'],['Preprocessing','SMOTE, StandardScaler'],['Evaluation','ROC-AUC, F1-Score']])">
+            <div class="tech-icon">🤖</div><div class="tech-name">Scikit-learn</div><div class="tech-role">ML Models</div>
+          </div>
+          <div class="tech-card" onclick="selectTech(this,'PyCaret','AutoML Framework','PyCaret was used for automated machine learning workflows, enabling rapid model comparison and selection. It automates feature engineering, model training, and evaluation, reducing development time significantly.','tech',[['Purpose','AutoML Pipeline'],['Benefit','Rapid Prototyping'],['Models Tested','15+ algorithms'],['Integration','Python & Power BI']])">
+            <div class="tech-icon">📈</div><div class="tech-name">PyCaret</div><div class="tech-role">AutoML</div>
+          </div>
+          <div class="tech-card" onclick="selectTech(this,'Pandas / NumPy','Data Processing','Pandas provides DataFrame-based data manipulation for cleaning, transforming, and analyzing 657K transaction records. NumPy handles vectorized numerical operations and array computations essential for ML preprocessing.','tech',[['Pandas Use','Data Wrangling'],['NumPy Use','Numerical Ops'],['Data Size','657K rows'],['Operations','Merge, GroupBy, Pivot']])">
+            <div class="tech-icon">🔢</div><div class="tech-name">Pandas / NumPy</div><div class="tech-role">Data Processing</div>
+          </div>
+          <div class="tech-card" onclick="selectTech(this,'Power Query','ETL Pipeline','Power Query (M language) handles Extract, Transform, Load operations in Power BI. Data sources include PostgreSQL, CSV files, and Excel sheets. Transformations include data type fixes, null handling, and table joins.','tech',[['Purpose','ETL Pipeline'],['Language','M Language'],['Sources','SQL, CSV, Excel'],['Transforms','Clean, Join, Pivot']])">
+            <div class="tech-icon">📋</div><div class="tech-name">Power Query</div><div class="tech-role">ETL Pipeline</div>
+          </div>
+          <div class="tech-card" onclick="selectTech(this,'Star Schema','Data Modeling','A Star Schema data model was implemented with a central Fact table (transactions) surrounded by dimension tables (Customers, Cards, Date, Geography, Expenditure). This enables efficient slicing and OLAP-style analysis in Power BI.','tech',[['Pattern','Star Schema'],['Fact Table','Transactions'],['Dimensions','Customer, Date, Geo'],['Benefit','Fast OLAP Queries']])">
+            <div class="tech-icon">⭐</div><div class="tech-name">Star Schema</div><div class="tech-role">Data Modeling</div>
+          </div>
+        </div>
+      </div>
+
+      <footer>
+        <p><b id="footerB">BI-Driven Credit Card Transaction Analytics</b> — Final Year Project 2026</p>
+        <p style="margin-top:0.3rem">Karthik Raja K &amp; Harish Ragaventra G — Adhiparasakthi College of Engineering, Anna University</p>
+      </footer>
+
+    </div><!-- /main-scroll -->
+  </div><!-- /content-area -->
+</div><!-- /body-wrap -->
+</div><!-- /shell -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+/* ═══ THEME CONFIGS ═══ */
+const THEMES = {
+  overview:     { primary:'#4f9eff', a:'#4f9eff', b:'#818cf8', c:'#34d399', d:'#fb923c', grid:'rgba(79,158,255,0.08)',  label:'OVERVIEW' },
+  transactions: { primary:'#f59e0b', a:'#f59e0b', b:'#fb923c', c:'#fcd34d', d:'#d97706', grid:'rgba(245,158,11,0.08)', label:'TRANSACTIONS' },
+  fraud:        { primary:'#f87171', a:'#f87171', b:'#fb923c', c:'#a78bfa', d:'#e53e3e', grid:'rgba(248,113,113,0.08)',label:'FRAUD RISK' },
+  customers:    { primary:'#a78bfa', a:'#a78bfa', b:'#818cf8', c:'#38bdf8', d:'#34d399', grid:'rgba(167,139,250,0.08)',label:'CUSTOMERS' },
+  tech:         { primary:'#34d399', a:'#34d399', b:'#38bdf8', c:'#a78bfa', d:'#fbbf24', grid:'rgba(52,211,153,0.08)', label:'TECH STACK' }
+};
+
+let currentTab = 'overview';
+let charts = {};
+
+function getCSSVar(name){ return getComputedStyle(document.body).getPropertyValue(name).trim(); }
+
+/* ═══ TAB SWITCH ═══ */
+function switchTab(el) {
+  const tab = el.dataset.tab;
+  if (tab === currentTab) return;
+  currentTab = tab;
+
+  // Update body theme
+  document.body.setAttribute('data-tab', tab);
+
+  // Update sidenav
+  document.querySelectorAll('.sidenav-item').forEach(i => i.classList.toggle('active', i.dataset.tab === tab));
+
+  // Update panels
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + tab).classList.add('active');
+
+  // Update nav tag
+  document.getElementById('navTag').textContent = '● ' + THEMES[tab].label;
+
+  // Update hero accent
+  const accents = { overview:'CREDIT CARD', transactions:'SPENDING', fraud:'FRAUD RISK', customers:'CUSTOMERS', tech:'TECH STACK' };
+  document.getElementById('heroAccent').textContent = accents[tab] || 'CREDIT CARD';
+
+  // Re-destroy & redraw charts for active tab
+  setTimeout(() => drawCharts(tab), 50);
+
+  // Clear selection
+  clearSelection();
+}
+
+/* ═══ CHART DRAWING ═══ */
+function destroyChart(id) { if (charts[id]) { charts[id].destroy(); delete charts[id]; } }
+
+function makeOpts(tab, axis='y', extra={}) {
+  const t = THEMES[tab];
+  return {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { ...extra.tooltip } },
+    scales: {
+      x: { grid: { color: axis==='x' ? t.grid : 'transparent' }, ticks: { color: '#6b7a99', font: { size: 11, family: "'DM Mono', monospace" } } },
+      y: { grid: { color: axis==='y' ? t.grid : 'transparent' }, ticks: { color: '#6b7a99', font: { size: 11, family: "'DM Mono', monospace" } } }
+    }, ...extra
+  };
+}
+
+function drawCharts(tab) {
+  const t = THEMES[tab];
+  Chart.defaults.color = '#6b7a99';
+  Chart.defaults.borderColor = t.grid;
+  Chart.defaults.font.family = "'Outfit', sans-serif";
+
+  if (tab === 'overview') {
+    destroyChart('qtrChart'); destroyChart('cardChart');
+    charts['qtrChart'] = new Chart(document.getElementById('qtrChart'), {
+      type:'bar',
+      data:{ labels:['Q1','Q2','Q3','Q4'], datasets:[{ data:[12.1,13.8,16.2,13.3], backgroundColor:[t.b,t.b,t.a,t.b], borderRadius:6 }] },
+      options:{ ...makeOpts(tab), plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>'₹'+c.raw+'M'}} } }
+    });
+    charts['cardChart'] = new Chart(document.getElementById('cardChart'), {
+      type:'doughnut',
+      data:{ labels:['Blue','Silver','Gold','Platinum'], datasets:[{ data:[46.1,7.2,1.5,0.6], backgroundColor:[t.a,t.c,t.b,t.d], borderWidth:2, borderColor:'#111827', hoverOffset:8 }] },
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, cutout:'68%' }
+    });
+  }
+
+  if (tab === 'transactions') {
+    destroyChart('expChart'); destroyChart('chipChart');
+    charts['expChart'] = new Chart(document.getElementById('expChart'), {
+      type:'bar',
+      data:{ labels:['Bills','Entertainment','Fuel','Grocery','Food','Travel'], datasets:[{ data:[14.2,13.8,12.1,9.8,8.4,5.1], backgroundColor:[t.a,t.b,t.c,t.d,t.a,t.b], borderRadius:5, barThickness:22 }] },
+      options:{ ...makeOpts(tab,'x'), indexAxis:'y', plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'₹'+c.raw+'M'}}},
+        scales:{ x:{ grid:{color:t.grid}, ticks:{color:'#6b7a99',font:{size:11},callback:v=>'₹'+v+'M'} }, y:{ grid:{color:'transparent'}, ticks:{color:'#6b7a99',font:{size:11}} } }
+      }
+    });
+    charts['chipChart'] = new Chart(document.getElementById('chipChart'), {
+      type:'doughnut',
+      data:{ labels:['Swipe','Chip','Online'], datasets:[{ data:[35,14.2,6.2], backgroundColor:[t.a,t.b,t.c], borderWidth:2, borderColor:'#111827', hoverOffset:8 }] },
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, cutout:'68%' }
+    });
+  }
+
+  if (tab === 'fraud') {
+    destroyChart('monthChart');
+    charts['monthChart'] = new Chart(document.getElementById('monthChart'), {
+      type:'line',
+      data:{
+        labels:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+        datasets:[{ data:[17,18,22,22,21,26,28,26,21,22,29,34], borderColor:t.a, backgroundColor:t.grid, tension:0.4, fill:true, pointBackgroundColor:t.a, pointRadius:4, pointHoverRadius:7 }]
+      },
+      options:{ ...makeOpts(tab), plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>c.raw+' cases'}} } }
+    });
+  }
+
+  if (tab === 'customers') {
+    destroyChart('jobChart'); destroyChart('eduChart'); destroyChart('ageChart');
+    charts['jobChart'] = new Chart(document.getElementById('jobChart'), {
+      type:'bar',
+      data:{ labels:['Businessman','Self-emp','Govt','White-collar','Blue-collar','Retirees'], datasets:[{ data:[3.09,2.81,2.23,1.68,1.36,0.82], backgroundColor:[t.a,t.b,t.c,t.d,t.a,t.b], borderRadius:6 }] },
+      options:{ ...makeOpts(tab), plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'₹'+c.raw+'M'}}},
+        scales:{ x:{grid:{color:'transparent'},ticks:{color:'#6b7a99',font:{size:10},maxRotation:25}}, y:{grid:{color:t.grid},ticks:{color:'#6b7a99',font:{size:11},callback:v=>'₹'+v+'M'}} }
+      }
+    });
+    charts['eduChart'] = new Chart(document.getElementById('eduChart'), {
+      type:'bar',
+      data:{ labels:['Graduate','High School','Unknown','Uneducated','Post-Grad','Doctorate'], datasets:[{ data:[4.2,2.8,1.9,1.2,0.9,0.4], backgroundColor:t.a, borderRadius:6 }] },
+      options:{ ...makeOpts(tab), plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'₹'+c.raw+'M'}}},
+        scales:{ x:{grid:{color:'transparent'},ticks:{color:'#6b7a99',font:{size:10},maxRotation:25}}, y:{grid:{color:t.grid},ticks:{color:'#6b7a99',font:{size:11},callback:v=>'₹'+v+'M'}} }
+      }
+    });
+    charts['ageChart'] = new Chart(document.getElementById('ageChart'), {
+      type:'bar',
+      data:{ labels:['40-50','50-60','30-40','60+','20-30'], datasets:[{ data:[5.2,4.8,3.1,1.4,0.9], backgroundColor:[t.a,t.b,t.c,t.d,t.a], borderRadius:6 }] },
+      options:{ ...makeOpts(tab), plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'₹'+c.raw+'M'}}} }
+    });
+  }
+}
+
+/* ═══ SUMMARY PANEL HELPERS ═══ */
+function clearSelection() {
+  document.querySelectorAll('.kpi-card.selected,.chart-card.selected,.state-bar-row.selected,.fraud-type-row.selected,.tech-card.selected,.dleg-row.selected,.ml-bar-row.selected,.data-table tr.selected').forEach(el => el.classList.remove('selected'));
+  document.getElementById('spContent').innerHTML = `
+    <div class="sp-empty">
+      <div class="sp-empty-icon">↖</div>
+      <div class="sp-empty-text">Click any KPI card, chart element, or row to see a detailed summary here</div>
+    </div>`;
+}
+
+function buildSummaryHTML(name, value, sub, insight, section, rows) {
+  let statsHTML = '';
+  if (rows && rows.length) {
+    statsHTML = `<div class="sp-section">BREAKDOWN</div>`;
+    rows.forEach(r => {
+      if (r.length === 2) {
+        statsHTML += `<div class="sp-stat"><span class="sp-stat-label">${r[0]}</span><span class="sp-stat-val">${r[1]}</span></div>`;
+      } else if (r.length >= 3) {
+        const pct = parseFloat(r[2]) || 0;
+        statsHTML += `<div style="margin-bottom:0.5rem;">
+          <div class="sp-mini-bar">
+            <span style="width:80px;font-size:0.72rem;color:var(--muted);flex-shrink:0">${r[0]}</span>
+            <div class="sp-bar-track"><div class="sp-bar-fill" style="width:${Math.min(pct,100)}%;"></div></div>
+            <span style="font-size:0.72rem;color:var(--text);font-family:'DM Mono',monospace;width:50px;text-align:right;">${r[1]}</span>
+          </div>
+        </div>`;
+      }
+    });
+  }
+  return `
+    <div class="sp-selected-label">SELECTED</div>
+    <div class="sp-selected-value">${value}</div>
+    <div class="sp-selected-sub">${sub}</div>
+    <div class="sp-divider"></div>
+    <div class="sp-section">INSIGHT</div>
+    <div class="sp-insight"><strong>${name}:</strong> ${insight}</div>
+    <div class="sp-divider"></div>
+    ${statsHTML}`;
+}
+
+function selectKPI(el, name, value, sub, insight, section, rows) {
+  document.querySelectorAll('.kpi-card.selected').forEach(e=>e.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('spTitle').textContent = 'KPI DETAIL';
+  document.getElementById('spContent').innerHTML = buildSummaryHTML(name, value, sub, insight, section, rows);
+}
+
+function selectChart(el, name, insight, section, rows) {
+  document.querySelectorAll('.chart-card.selected').forEach(e=>e.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('spTitle').textContent = 'CHART DETAIL';
+  document.getElementById('spContent').innerHTML = buildSummaryHTML(name, '—', name, insight, section, rows);
+}
+
+function selectRow(el, name, value, insight, section, rows) {
+  document.querySelectorAll('.data-table tr.selected').forEach(e=>e.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('spTitle').textContent = 'ROW DETAIL';
+  document.getElementById('spContent').innerHTML = buildSummaryHTML(name, value, name, insight, section, rows);
+}
+
+function selectState(name, count, pct, insight) {
+  document.querySelectorAll('.state-bar-row.selected').forEach(e=>e.classList.remove('selected'));
+  event.currentTarget.classList.add('selected');
+  document.getElementById('spTitle').textContent = 'STATE DETAIL';
+  document.getElementById('spContent').innerHTML = buildSummaryHTML(
+    name, count+' cases', 'Fraudulent transactions',
+    insight, 'fraud',
+    [['Fraud Cases',count],['Relative %',Math.round(pct)+'%'],['Rank','#'+[40,36,34,34,33,29,28,27,23,21].indexOf(count)+1+' of top 10']]
+  );
+}
+
+function selectRisk(name, pct, insight) {
+  document.getElementById('spTitle').textContent = 'RISK TIER';
+  document.getElementById('spContent').innerHTML = buildSummaryHTML(
+    name, pct, 'Of all transactions',
+    insight, 'fraud',
+    [['Risk Tier',name],['Percentage',pct],['Action',name==='Critical Risk'?'Auto-block':name==='High Risk'?'Manual review':name==='Medium Risk'?'Enhanced auth':'Standard']]
+  );
+}
+
+function selectFraud(name, amount, pct, color, insight) {
+  document.querySelectorAll('.fraud-type-row.selected').forEach(e=>e.classList.remove('selected'));
+  event.currentTarget.classList.add('selected');
+  document.getElementById('spTitle').textContent = 'FRAUD TYPE';
+  document.getElementById('spContent').innerHTML = buildSummaryHTML(
+    name, amount, 'Fraud type amount',
+    insight, 'fraud',
+    [[name,amount],[pct+'% relative','of CNP baseline'],['Priority',pct>=90?'Critical':pct>=70?'High':'Medium']]
+  );
+}
+
+function selectML(name, acc, color, insight) {
+  document.querySelectorAll('.ml-bar-row.selected').forEach(e=>e.classList.remove('selected'));
+  event.currentTarget.classList.add('selected');
+  document.getElementById('spTitle').textContent = 'MODEL DETAIL';
+  document.getElementById('spContent').innerHTML = buildSummaryHTML(
+    name, acc, 'Classification accuracy',
+    insight, 'customers',
+    [['Accuracy',acc],['Type',name==='K-Means'||name==='DBSCAN'?'Unsupervised':'Supervised'],['Rank','#'+['Random Forest','Logistic Reg.','Isolation Forest','DBSCAN','K-Means'].indexOf(name)+1+' of 5']]
+  );
+}
+
+function selectTech(el, name, role, insight, section, rows) {
+  document.querySelectorAll('.tech-card.selected').forEach(e=>e.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('spTitle').textContent = 'TECH DETAIL';
+  document.getElementById('spContent').innerHTML = buildSummaryHTML(name, role, name+' — '+role, insight, section, rows);
+}
+
+
+/* ═══ AUTH SYSTEM ═══ */
+const USERS = {
+  admin: { id: 'Apce5101', pass: 'cse@bs', role: 'admin', name: 'Administrator' },
+  user1: { id: 'user1',    pass: 'sample1', role: 'user',  name: 'User 1' },
+  user2: { id: 'user2',    pass: 'sample2', role: 'user',  name: 'User 2' }
+};
+
+let currentLoginTab = 'admin';
+let loggedInUser = null;
+
+function switchLoginTab(tab) {
+  currentLoginTab = tab;
+  document.getElementById('tabAdmin').classList.toggle('active', tab==='admin');
+  document.getElementById('tabUser').classList.toggle('active', tab==='user');
+  document.getElementById('loginId').value = '';
+  document.getElementById('loginPass').value = '';
+  document.getElementById('loginError').classList.remove('show');
+  document.getElementById('loginId').placeholder = tab==='admin' ? 'Admin ID' : 'User ID';
+  document.getElementById('loginId').focus();
+}
+
+function doLogin() {
+  const id   = document.getElementById('loginId').value.trim();
+  const pass = document.getElementById('loginPass').value.trim();
+  const err  = document.getElementById('loginError');
+  err.classList.remove('show');
+
+  let matched = null;
+  for (const key in USERS) {
+    const u = USERS[key];
+    if (u.id === id && u.pass === pass) {
+      if (currentLoginTab === 'admin' && u.role !== 'admin') continue;
+      if (currentLoginTab === 'user'  && u.role !== 'user')  continue;
+      matched = u;
+      break;
+    }
+  }
+
+  if (!matched) {
+    err.textContent = currentLoginTab==='admin'
+      ? 'Invalid admin credentials. Check your ID and password.'
+      : 'Invalid user credentials. Check your ID and password.';
+    err.classList.add('show');
+    document.getElementById('loginPass').value='';
+    document.getElementById('loginPass').focus();
+    return;
+  }
+
+  loggedInUser = matched;
+  document.getElementById('loginOverlay').classList.add('hidden');
+  setTimeout(()=>drawCharts('overview'), 100);
+
+  // Update topnav
+  const roleTag = matched.role === 'admin'
+    ? '<span class="admin-badge-pill">ADMIN</span>'
+    : '<span class="user-badge-pill">USER</span>';
+
+  document.getElementById('navRight').innerHTML = `
+    <div class="nav-user">
+      <div class="nav-tag" id="navTag">● OVERVIEW</div>
+      <div class="nav-user-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        ${matched.name}${roleTag}
+      </div>
+      <button class="nav-logout" onclick="doLogout()">Logout</button>
+    </div>`;
+
+  // Show admin-only sections if admin
+  if (matched.role === 'admin') {
+    document.querySelectorAll('.admin-only').forEach(el => el.classList.add('show'));
+  }
+
+  // Show toast
+  const toast = document.getElementById('sessionToast');
+  document.getElementById('sessionToastMsg').textContent = 'Welcome, ' + matched.name + '! Signed in as ' + matched.role + '.';
+  toast.classList.add('show');
+  setTimeout(()=>toast.classList.remove('show'), 3800);
+}
+
+function doLogout() {
+  loggedInUser = null;
+  document.getElementById('loginOverlay').classList.remove('hidden');
+  document.getElementById('loginId').value='';
+  document.getElementById('loginPass').value='';
+  document.getElementById('loginError').classList.remove('show');
+  document.querySelectorAll('.admin-only').forEach(el=>el.classList.remove('show'));
+  // Reset nav right
+  document.getElementById('navRight').innerHTML = '<div class="nav-tag" id="navTag">● OVERVIEW</div>';
+  // Clear charts
+  Object.values(charts).forEach(c=>c.destroy());
+  charts={};
+  currentTab='overview';
+  switchLoginTab('admin');
+  // toast
+  const toast = document.getElementById('sessionToast');
+  document.getElementById('sessionToastMsg').textContent = 'You have been signed out.';
+  toast.classList.add('show');
+  setTimeout(()=>toast.classList.remove('show'),3000);
+}
+
+/* ═══ INIT ═══ */
+// Charts drawn after login
+
+</script>
+</body>
+</html>
